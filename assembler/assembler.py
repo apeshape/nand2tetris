@@ -1,15 +1,18 @@
 import io
 import sys
 
-#ass = io.open('MaxL.asm', encoding='ascii')
-#if(!sys.argv[1]){
-#	sys.exit('Usage: assembler.py filename destname');
-#}
+#Open input file for reading
 ass = io.open(sys.argv[1], encoding='ascii')
-out = open(sys.argv[2] + '.hack','w')
+#open output file for writing
+if(len(sys.argv) == 3):
+	out = open(sys.argv[2] + '.hack','w')
+else:
+	sys.exit("Please provide name of output file")
 
+#split lines into list
 lines = ass.read().split('\n')
 
+#define all possible computations, destinations and jumps
 computations = {
 				'0'		: '101010',
 				'1'		: '111111',
@@ -60,6 +63,20 @@ jumps = {
 				}
 instructions = [];
 
+symbols = {
+	'SP'	: 0,
+	'LCL' 	: 1,
+	'ARG'	: 2,
+	'THIS'	: 3,
+	'THAT'	: 4,
+	'SCREEN': 16384,
+	'KBD'	: 24576
+}
+for i in range(0,15):
+	symbols['R' + `i`] = 5 + i;
+
+
+addrPointer = 16;
 numLines = 0
 output = ''
 
@@ -103,6 +120,23 @@ def composeBinary(dest, comp, jump):
 		return '111' + compBits + destBits + jumpBits
 	return False
 
+def isNumber(s):
+	try:
+		float(s)
+		return True
+	except ValueError:
+		return False
+
+def checkRef( val ):
+	lineNum = 0;
+	for line in lines:
+		if line.startswith('('):
+			ref = line.strip('()')
+			if ref == val:
+				return lineNum
+		lineNum = lineNum + 1
+	return False
+
 
 for line in lines:
 	instruction = ''
@@ -112,16 +146,38 @@ for line in lines:
 	comp = ''
 	jump = ''
 
-	if line.startswith('//'):
+	#remove whitespace
+	line = line.strip();
+
+	#skip comment lines
+	if line.startswith('//') or line.startswith('(') or line == '':
 		continue
 
+	#if line starts with @, then we have an A-operation
 	if line.startswith('@'):
-		val = int(line[1:])
+		val = line[1:]
+		if isNumber(val):
+			val = int(val)
+		else:
+			if ( val in symbols ):
+				val = int(symbols[val])
+			else :
+				r = checkRef(val)
+				if r:
+					val = r
+				else :
+					v = addrPointer
+					symbols[val] = addrPointer;
+					addrPointer = addrPointer + 1;
+					val = v
+
 		instruction = bin(val)[2:]
 		instruction = padbin(instruction)
 
 		instructions.append(instruction)
+
 		numLines = numLines + 1
+
 		continue
 
 
@@ -142,12 +198,12 @@ for line in lines:
 			parts = line.split(';')
 		comp = parts[0]
 		jump = parts[1]
-		print jump
+
 	instruction = composeBinary(dest, comp, jump)
 	if(instruction):
 		instructions.append(instruction)
-	#else:
-		#print 'Invalid command at line: ' + str(numLines + 1)
+	else:
+		print "Unrecognized instruction on line: " + `numLines`
 
 
 

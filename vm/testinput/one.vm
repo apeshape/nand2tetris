@@ -1,0 +1,6 @@
+push constant 1
+pop constant 0
+add
+push command 23
+push this 2
+add

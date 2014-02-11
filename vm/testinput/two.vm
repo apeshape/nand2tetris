@@ -1,0 +1,4 @@
+push const 1
+pop const 2
+add
+add

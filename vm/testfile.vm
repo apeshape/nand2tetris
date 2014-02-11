@@ -1,0 +1,8 @@
+push constant 1
+push constant 2
+pop constant 2
+add
+push constant 5
+eq
+gt
+pop this 0

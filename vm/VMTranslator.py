@@ -17,5 +17,11 @@ for fname in filenames:
 
 	while p.hasMoreCommands():
 		p.advance()
-		print p.commandType()
-		print p.arg2()
+		args = [p.arg1()]
+		if p.arg2() :
+			args.append(p.arg2())
+
+		writer.resolveCommand(p.commandType(), args)
+
+	writer.printHackLines()
+		# print p.commandType()

@@ -7,11 +7,19 @@ class Parser( object ):
 	def __init__(self, arg):
 		super(Parser, self).__init__()
 		self.input = io.open( arg )
-		self.lines = self.input.read().split('\n')
+		self.lines = self.washInput(self.input.read().split('\n'))
 		self.lineCount = len(self.lines)
 		self.currentCommand = ''
 		self.currentCommandParts = []
 		self.atCommand = 0
+
+	def washInput(self, lines):
+		res = []
+		for line in lines:
+			if line.startswith('//') or line.startswith('\n') or line == '':
+				continue
+			res.append(line)
+		return res
 
 	def getInput(self):
 		return self.input

@@ -29,6 +29,7 @@ class CodeWriter( object ):
 		super(CodeWriter, self).__init__()
 		self.outfile = open('vmlabb.asm','w')
 		self.hackLines = []
+		self.uniqueLabelCount = 0
 		self.compileFunctions = {
 			'C_ARITHMETIC' : self.compileArithmetic,
 			'C_PUSH' : self.compilePush,
@@ -52,12 +53,151 @@ class CodeWriter( object ):
 		}
 		print self.outfile
 
+	def uniqueLabel( self ):
+		label = 'L$' + `self.uniqueLabelCount`
+		self.uniqueLabelCount = self.uniqueLabelCount + 1
+		return label
+
 	def writeLn( self, op ):
 		self.hackLines.append(op)
 		self.outfile.write(op + '\n')
 
+	def unary( self, arType ):
+		self.writeLn('@SP')
+		self.writeLn('AM=M-1')
+
+		if arType == 'neg':
+			self.writeLn('D=-M')
+		if arType == 'not':
+			self.writeLn('D=!M')
+
+		self.writeLn('M=D')
+		self.writeLn('@SP')
+		self.writeLn('M=M+1')
+
+	def cmp( self, arType ):
+		ifTrue = self.uniqueLabel()
+		ifFalse = self.uniqueLabel()
+		endIf = self.uniqueLabel()
+
+		#pop 1st value and save in R13
+		self.writeLn('@SP') # prep A with SP
+		self.writeLn('AM=M-1') # set A to *SP
+		self.writeLn('D=M') # store the value that SP points to
+		self.writeLn('@R13')
+		self.writeLn('M=D') # store value in R13
+
+		#pop 2nd value and put in D
+		self.writeLn('@SP')
+		self.writeLn('AM=M-1')
+		self.writeLn('D=M')
+
+		#get 1st value from R13 and put in A
+		self.writeLn('@R13')
+		self.writeLn('A=M')
+
+		self.writeLn('D=D-A')
+
+		if arType == 'eq':
+			self.writeLn('@' + ifTrue)
+			self.writeLn('D;JEQ')
+			self.writeLn('@' + ifFalse)
+			self.writeLn('D;JNE')
+		if arType == 'gt':
+			self.writeLn('@' + ifTrue)
+			self.writeLn('D;JGT')
+			self.writeLn('@' + ifFalse)
+			self.writeLn('D;JLE')
+		if arType == 'lt':
+			self.writeLn('@' + ifTrue)
+			self.writeLn('D;JLT')
+			self.writeLn('@' + ifFalse)
+			self.writeLn('D;JGE')
+
+
+		self.writeLn('(' + ifTrue + ')')
+		self.writeLn('@SP')
+		self.writeLn('A=M')
+		self.writeLn('M=-1')
+		self.writeLn('@SP')
+		self.writeLn('M=M+1')
+		self.writeLn('@' + endIf)
+		self.writeLn('0;JMP')
+		self.writeLn('(' + ifFalse + ')')
+		self.writeLn('@SP')
+		self.writeLn('A=M')
+		self.writeLn('M=0')
+		self.writeLn('@SP')
+		self.writeLn('M=M+1')
+		self.writeLn('('+endIf+')')
+
+
+	def add( self, arType ):
+		#pop X and store in R13
+		self.writeLn('@SP') # prep A with SP
+		self.writeLn('AM=M-1') # set A to *SP
+		self.writeLn('D=M') # store the value that SP points to
+		self.writeLn('@R13')
+		self.writeLn('M=D')
+
+		#pop Y and store in D
+		self.writeLn('@SP') # prep A with SP
+		self.writeLn('AM=M-1') # set A to *SP
+		self.writeLn('D=M') # store the value that SP points to
+
+		#get X from R13
+		self.writeLn('@R13')
+		self.writeLn('A=M')
+		if arType == 'sub':
+			self.writeLn('D=D-A')
+		else:
+			self.writeLn('D=D+A')
+		self.writeLn('@SP')
+		self.writeLn('AM=M')
+		self.writeLn('M=D')
+		self.writeLn('@SP')
+		self.writeLn('M=M+1')
+
+	def andOr( self, arType ):
+		#pop 1st value and save in R13
+		self.writeLn('@SP') # prep A with SP
+		self.writeLn('AM=M-1') # set A to *SP
+		self.writeLn('D=M') # store the value that SP points to
+		self.writeLn('@R13')
+		self.writeLn('M=D') # store value in R13
+
+		#pop 2nd value and put in D
+		self.writeLn('@SP')
+		self.writeLn('AM=M-1')
+		self.writeLn('D=M')
+
+		#get 1st value from R13 and put in A
+		self.writeLn('@R13')
+		self.writeLn('A=M')
+
+		if arType == 'or':
+			self.writeLn('D=D|A')
+		if arType == 'and':
+			self.writeLn('D=D&A')
+
+		self.writeLn('@SP')
+		self.writeLn('A=M')
+		self.writeLn('M=D')
+		self.writeLn('@SP')
+		self.writeLn('M=M+1')
+
+
+
 	def compileArithmetic( self, args ):
-		print 'compile arithmetic '
+		arType = args[0]
+		if arType == 'add' or arType == 'sub':
+			self.add( arType )
+		if arType in ['eq', 'gt', 'lt']:
+			self.cmp( arType )
+		if arType in ['neg', 'not']:
+			self.unary( arType )
+		if arType in ['and', 'or']:
+			self.andOr( arType )
 
 	def compilePush( self, args ):
 		segment = args[0]

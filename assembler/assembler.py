@@ -1,11 +1,14 @@
+#! /usr/bin/python
 import io
 import sys
 
 #Open input file for reading
-ass = io.open(sys.argv[1], encoding='ascii')
 #open output file for writing
 if(len(sys.argv) == 3):
-	out = open(sys.argv[2] + '.hack','w')
+    out = open(sys.argv[2] + '.hack','w')
+    ass = io.open(sys.argv[1], encoding='ascii')
+elif len(sys.argv) < 2:
+    sys.exit("Usage: nassembler inputfile.asm outputfile")
 else:
 	sys.exit("Please provide name of output file")
 

@@ -3,7 +3,6 @@ import io
 arithmetics = ['add', 'sub', 'neg', 'eq', 'gt', 'lt', 'and', 'or', 'not']
 
 class Parser( object ):
-	"""docstring for Parser"""
 	def __init__(self, arg):
 		super(Parser, self).__init__()
 		self.input = io.open( arg )

@@ -25,9 +25,9 @@ increase SP by 1
 """
 
 class CodeWriter( object ):
-	def __init__(self, outfile):
+	def __init__( self, outfile ):
 		super(CodeWriter, self).__init__()
-		self.outfile = outfile
+		self.outfile = open('vmlabb.asm','w')
 		self.hackLines = []
 		self.compileFunctions = {
 			'C_ARITHMETIC' : self.compileArithmetic,
@@ -39,7 +39,8 @@ class CodeWriter( object ):
 			'argument':'ARG',
 			'this':'THIS',
 			'that':'THAT',
-			'temp':'TEMP',
+			'temp':'R5',
+			'pointer':'THIS'
 		}
 		self.pointers = {
 			'SP': 0,
@@ -51,43 +52,78 @@ class CodeWriter( object ):
 		}
 		print self.outfile
 
-	def compileArithmetic(self,args):
+	def writeLn( self, op ):
+		self.hackLines.append(op)
+		self.outfile.write(op + '\n')
+
+	def compileArithmetic( self, args ):
 		print 'compile arithmetic '
 
-	def compilePush(self,args):
+	def compilePush( self, args ):
 		segment = args[0]
 		value = int(args[1])
 
 		if segment == 'constant':
-			self.hackLines.append('@' + `value`) #set A to the constant value
-			self.hackLines.append('D=A') #put that in D
-			self.hackLines.append('@0') #set A to SP address
-			self.hackLines.append('A=M') #set A to SP
-			self.hackLines.append('M=D') #set the address of SP to the value of D
-			self.hackLines.append('@0') #increment SP
-			self.hackLines.append('M=M+1')
+			self.writeLn('@' + `value`) #set A to the constant value
+			self.writeLn('D=A') #put that in D
+			self.writeLn('@SP') #set A to SP address
+			self.writeLn('A=M') #set A to SP
+			self.writeLn('M=D') #set the address of SP to the value of D
+			self.writeLn('@SP') #increment SP
+			self.writeLn('M=M+1')
 		else:
-			self.hackLines.append('@' + `self.pointers[self.labels[segment]]`) #set A to the segment base pointer
-			self.hackLines.append('D=M') #get segment base address value and prep A
-			self.hackLines.append('@' + `value`) #set A to offset
-			self.hackLines.append('D=D+A') #compute address of RAM we want to push
-			self.hackLines.append('A=D') #set A to the RAM address we just made
-			self.hackLines.append('D=M') #set D to the value that that RAM address stores
+			self.writeLn('@' + self.labels[segment]) #set A to the segment base pointer
+			self.writeLn('D=M') #get segment base address value and prep A
+			self.writeLn('@' + `value`) #set A to offset
+			self.writeLn('D=D+A') #compute address of RAM we want to push
+			self.writeLn('A=D') #set A to the RAM address we just made
+			self.writeLn('D=M') #set D to the value that that RAM address stores
 
-			self.hackLines.append('@0') #set A to SP address
-			self.hackLines.append('A=M') #set A to the SP
-			self.hackLines.append('M=D') #save what is in D to where the SP points at at the moment
-			self.hackLines.append('@0') #set A to address of SP
-			self.hackLines.append('M=M+1') #increase SP by 1
+			self.writeLn('@SP') #set A to SP address
+			self.writeLn('A=M') #set A to the SP
+			self.writeLn('M=D') #save what is in D to where the SP points at at the moment
+			self.writeLn('@SP') #set A to address of SP
+			self.writeLn('M=M+1') #increase SP by 1
 
-	def compilePop(self,args):
-		print 'compile pop'
+	def compilePop( self, args ):
+		segment = args[0]
+		offset = int(args[1])
 
-	def printHackLines(self):
+		#Get top value from stack
+		self.writeLn('@SP') # prep A with SP
+		self.writeLn('AM=M-1') # set A to *SP
+		self.writeLn('D=M') # store the value that SP points to
+
+		#save value to TMP
+		self.writeLn('@13')
+		self.writeLn('M=D')
+
+		#get location to where we want to POP
+		self.writeLn('@' + self.labels[segment])
+		if(segment == 'temp'):
+			self.writeLn('D=A')
+		else:
+			self.writeLn('D=M') #Store segment pointer in D
+		self.writeLn('@' + `offset`)
+		self.writeLn('D=D+A')
+
+		#Swap values with TMP
+		self.writeLn('@R14')
+		self.writeLn('M=D')
+
+		self.writeLn('@13')
+		self.writeLn('D=M')
+
+		self.writeLn('@14')
+		self.writeLn('A=M')
+
+		self.writeLn('M=D')
+
+	def printHackLines( self ):
 		for l in self.hackLines:
 			print l
 
-	def resolveCommand(self, commandType, args):
+	def resolveCommand( self, commandType, args ):
 		self.compileFunctions[commandType](args);
 
 
